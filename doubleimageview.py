@@ -67,12 +67,23 @@ def patch_bounds(
     return x1, y1, x2, y2
 
 
+def circular_mask(
+    x1: int, y1: int, x2: int, y2: int, cx: int, cy: int, radius: int
+) -> np.ndarray:
+    """バウンディングボックス内の円形マスク（bool, shape: (y2-y1, x2-x1)）。"""
+    ys = np.arange(y1, y2)[:, None]
+    xs = np.arange(x1, x2)[None, :]
+    return (xs - cx) ** 2 + (ys - cy) ** 2 <= radius**2
+
+
 def apply_patch(
     display: np.ndarray, source: np.ndarray, cx: int, cy: int, radius: int
 ) -> None:
     h, w = display.shape[:2]
     x1, y1, x2, y2 = patch_bounds(w, h, cx, cy, radius)
-    display[y1:y2, x1:x2] = source[y1:y2, x1:x2]
+    mask = circular_mask(x1, y1, x2, y2, cx, cy, radius)
+    region = display[y1:y2, x1:x2]
+    region[mask] = source[y1:y2, x1:x2][mask]
 
 
 def on_mouse(event: int, x: int, y: int, _flags: int, state: dict) -> None:
@@ -105,7 +116,7 @@ def main() -> None:
     cv2.imshow(window_name, display)
     print(
         "画像を表示しています。"
-        f"クリックで周辺（半径 {PATCH_RADIUS}px）を2枚目の画像で置き換えます。"
+        f"クリックで周辺の円（半径 {PATCH_RADIUS}px）を2枚目の画像で置き換えます。"
         "何かキーを押すと終了します。"
     )
     cv2.waitKey(0)
